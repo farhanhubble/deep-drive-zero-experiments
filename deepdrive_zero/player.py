@@ -1,8 +1,12 @@
+from deepdrive_zero.constants import CACHE_NUMBA
 import math
 from math import cos, sin, pi
+from multiprocessing import Pool
+from numba import jit
 import os
 import sys
 from random import random
+from time import time
 from typing import List
 
 import numpy as np
@@ -61,6 +65,8 @@ class Deepdrive2DPlayer(arcade.Window):
         self.one_waypoint = one_waypoint
 
         self.env_config = env_config
+        self._n_update = 0
+        self._cum_update_time = 0
 
     def setup(self):
         """ Set up the game here. Call this function to restart the game. """
@@ -109,6 +115,8 @@ class Deepdrive2DPlayer(arcade.Window):
             sprite.center_x = agent.map.x_pixels[0]
             sprite.center_y = agent.map.y_pixels[0]
             self.player_list.append(sprite)
+
+        self._pool = Pool()
 
 
     def on_draw(self):
@@ -359,18 +367,47 @@ class Deepdrive2DPlayer(arcade.Window):
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.steer = 0
 
-    def update(self, _delta_time):
+    
+    
+    # def _parallel_update(self, x):
+    #     i, agent = x
+    #     sprite = self.player_list[i]
+
+    #     env = self.env
+
+    #     if self.human_controlled:
+    #         if env.agent_index == 0:
+    #             steer = self.steer
+    #             accel = self.accel
+    #             brake = self.brake
+    #         else:
+    #             steer = 0
+    #             accel = random()
+    #             brake = 0
+
+    #         # Prev obs for next agent!
+    #         obz, reward, done, info = env.step([steer, accel, brake])
+
+    #         if agent.done:
+    #             agent.reset()
+
+    #     sprite.center_x = agent.x * self.px_per_m
+    #     sprite.center_y = agent.y * self.px_per_m
+
+    #     # TODO: Change rotation axis to rear axle?? (now at center)
+    #     sprite.angle = math.degrees(agent.angle)
+
+
+
+    @jit(nopython=False, cache=CACHE_NUMBA, nogil=True) 
+    def _parallel_update(self,_delta_time):
         """ Movement and game logic """
         env = self.env
         for i, agent in enumerate(env.all_agents):
             sprite = self.player_list[i]
 
-            # log.trace(f'v:{a.speed}')
-            # log.trace(f'a:{self.accel}')
-            # log.trace(f'dt2:{_delta_time}')
-
             if self.human_controlled:
-                if env.agent_index == 0:
+                if False: #env.agent_index == 0:
                     steer = self.steer
                     accel = self.accel
                     brake = self.brake
@@ -385,19 +422,58 @@ class Deepdrive2DPlayer(arcade.Window):
                 if agent.done:
                     agent.reset()
 
-            # log.debug(f'Deviation: '
-            #           f'{obz.lane_deviation / self.rough_pixels_per_meter}')
-
-
             sprite.center_x = agent.x * self.px_per_m
             sprite.center_y = agent.y * self.px_per_m
 
             # TODO: Change rotation axis to rear axle?? (now at center)
             sprite.angle = math.degrees(agent.angle)
 
-            # log.trace(f'x:{a.x}')
-            # log.trace(f'y:{a.y}')
-            # log.trace(f'angle:{self.sprite.angle}')
+
+
+    def update(self, _delta_time):
+        """ Movement and game logic """
+        start_time = time()
+        # env = self.env
+        # for i, agent in enumerate(env.all_agents):
+        #     sprite = self.player_list[i]
+
+        #     # log.trace(f'v:{a.speed}')
+        #     # log.trace(f'a:{self.accel}')
+        #     # log.trace(f'dt2:{_delta_time}')
+
+        #     if self.human_controlled:
+        #         if env.agent_index == 0:
+        #             steer = self.steer
+        #             accel = self.accel
+        #             brake = self.brake
+        #         else:
+        #             steer = 0
+        #             accel = random()
+        #             brake = 0
+
+        #         # Prev obs for next agent!
+        #         obz, reward, done, info = env.step([steer, accel, brake])
+
+        #         if agent.done:
+        #             agent.reset()
+
+        #     # log.debug(f'Deviation: '
+        #     #           f'{obz.lane_deviation / self.rough_pixels_per_meter}')
+
+
+        #     sprite.center_x = agent.x * self.px_per_m
+        #     sprite.center_y = agent.y * self.px_per_m
+
+        #     # TODO: Change rotation axis to rear axle?? (now at center)
+        #     sprite.angle = math.degrees(agent.angle)
+        self._parallel_update(_delta_time)
+        end_time = time()
+        self._cum_update_time += end_time-start_time
+        self._n_update += 1
+        if self._n_update % 100 == 0:
+            print(f'Farhan: After {self._n_update} steps, average time taken to execute update() {self._cum_update_time/self._n_update}')
+
+        
 
 
 def start(env=None, fps=60, env_config=None):
