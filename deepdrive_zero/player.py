@@ -4,6 +4,7 @@ import os
 import sys
 from random import random
 from typing import List
+from multiprocessing import Pool
 
 import numpy as np
 
@@ -359,41 +360,60 @@ class Deepdrive2DPlayer(arcade.Window):
         elif key == arcade.key.RIGHT or key == arcade.key.D:
             self.steer = 0
 
+    def _parallel_update(self, x):
+        i, agent = x
+        sprite = self.player_list[i]
+        env = self.env
+
+        obz, reward, done, info = env.step([steer, accel, brake])
+
+        if agent.done:
+            agent.reset()
+
+        sprite.center_x = agent.x * self.px_per_m
+        sprite.center_y = agent.y * self.px_per_m
+
+        sprite.angle = math.degrees(agent.angle)
+
+
+
     def update(self, _delta_time):
         """ Movement and game logic """
         env = self.env
-        for i, agent in enumerate(env.all_agents):
-            sprite = self.player_list[i]
+        #for i, agent in enumerate(env.all_agents):
+        pool = Pool()
+        pool.map(self._parallel_update, enumerate(env.all_agents))
+            # sprite = self.player_list[i]
 
-            # log.trace(f'v:{a.speed}')
-            # log.trace(f'a:{self.accel}')
-            # log.trace(f'dt2:{_delta_time}')
+            # # log.trace(f'v:{a.speed}')
+            # # log.trace(f'a:{self.accel}')
+            # # log.trace(f'dt2:{_delta_time}')
 
-            if self.human_controlled:
-                if env.agent_index == 0:
-                    steer = self.steer
-                    accel = self.accel
-                    brake = self.brake
-                else:
-                    steer = 0
-                    accel = random()
-                    brake = 0
+            # if self.human_controlled:
+            #     if env.agent_index == 0:
+            #         steer = self.steer
+            #         accel = self.accel
+            #         brake = self.brake
+            #     else:
+            #         steer = 0
+            #         accel = random()
+            #         brake = 0
 
-                # Prev obs for next agent!
-                obz, reward, done, info = env.step([steer, accel, brake])
+            #     # Prev obs for next agent!
+            #     obz, reward, done, info = env.step([steer, accel, brake])
 
-                if agent.done:
-                    agent.reset()
+            #     if agent.done:
+            #         agent.reset()
 
-            # log.debug(f'Deviation: '
-            #           f'{obz.lane_deviation / self.rough_pixels_per_meter}')
+            # # log.debug(f'Deviation: '
+            # #           f'{obz.lane_deviation / self.rough_pixels_per_meter}')
 
 
-            sprite.center_x = agent.x * self.px_per_m
-            sprite.center_y = agent.y * self.px_per_m
+            # sprite.center_x = agent.x * self.px_per_m
+            # sprite.center_y = agent.y * self.px_per_m
 
-            # TODO: Change rotation axis to rear axle?? (now at center)
-            sprite.angle = math.degrees(agent.angle)
+            # # TODO: Change rotation axis to rear axle?? (now at center)
+            # sprite.angle = math.degrees(agent.angle)
 
             # log.trace(f'x:{a.x}')
             # log.trace(f'y:{a.y}')
