@@ -3,6 +3,7 @@ import sys
 import time
 from copy import deepcopy
 from inspect import signature
+from numba import njit, jit, prange
 from typing import Tuple, List
 import random
 import gym
@@ -17,7 +18,7 @@ from deepdrive_zero.physics.collision_detection import check_collision_ego_obj,\
     check_collision_agents
 from deepdrive_zero.constants import USE_VOYAGE, MAP_WIDTH_PX, MAP_HEIGHT_PX, \
     SCREEN_MARGIN, VEHICLE_HEIGHT, VEHICLE_WIDTH, PX_PER_M, \
-    MAX_METERS_PER_SEC_SQ, IS_DEBUG_MODE, GAME_OVER_PENALTY
+    MAX_METERS_PER_SEC_SQ, IS_DEBUG_MODE, GAME_OVER_PENALTY, CACHE_NUMBA
 from deepdrive_zero.logs import log
 
 
@@ -255,16 +256,16 @@ class Deepdrive2DEnv(gym.Env):
         random.seed(seed)
 
     @log.catch
-    def step(self, action):
+    def step(self, actions):
         if self.total_steps == 0:
             log.info(self.env_config)
         if IS_DEBUG_MODE:
-            return self._step(action)
+            return self._step(actions)
         else:
             # Fail gracefully when running so that long training runs are
             # not interrupted by transient errors
             try:
-                return self._step(action)
+                return self._step(actions)
             except:
                 log.exception('Caught exception in step, ending episode')
                 obz = self.get_blank_observation()
@@ -277,27 +278,14 @@ class Deepdrive2DEnv(gym.Env):
 
                 return obz, reward, done, info
 
-    def _step(self, action):
+    
+    
+    def _step(self, actions):
         self.start_step_time = time.time()
-        agent = self.agents[self.agent_index]
-
-        self.check_for_collisions()
-        obs, reward, done, info = agent.step(action)
-        self.curr_reward = reward
-        if done:
-            self.num_episodes += 1
-
-        self.episode_steps += 1
-        self.total_steps += 1
-
-        ret = self.get_step_output(done, info, obs, reward)
+        ret =  _p_step(self.agents, self.dummy_accel_agents, actions)
 
         if self.should_render:
             self.regulate_fps()
-
-        for dummy_accel_agent in self.dummy_accel_agents:
-            # Random forward accel
-            dummy_accel_agent.step([0, random.random(), 0])
 
         return ret
 
@@ -391,6 +379,31 @@ class Deepdrive2DEnv(gym.Env):
         elif self.is_intersection_map:
             return check_collision_agents(self.all_agents)
 
+
+@jit(cache=CACHE_NUMBA, nogil=True)
+def _p_step(agents:[Agent], 
+    dummy_accel_agents:[Agent], 
+    actions):
+    ret = []
+    for i in prange(len(agents)):
+        agent = agents[i]
+        if (i+1) % 100 == 0:
+            print(i)
+        #self.check_for_collisions()
+        obs, reward, done, info = agent.step(actions[i])
+        #self.curr_reward = reward
+        # if done:
+        #     self.num_episodes += 1
+
+        # self.episode_steps += 1
+        # self.total_steps += 1
+
+        for dummy_accel_agent in dummy_accel_agents:
+            # Random forward accel
+            dummy_accel_agent.step([0, random.random(), 0])
+
+
+    return ret
 
 
 def main():
