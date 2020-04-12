@@ -2,7 +2,6 @@ from deepdrive_zero.constants import CACHE_NUMBA
 import math
 from math import cos, sin, pi
 from multiprocessing import Pool
-from numba import jit
 import os
 import sys
 from random import random

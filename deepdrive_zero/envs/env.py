@@ -3,6 +3,7 @@ import sys
 import time
 from copy import deepcopy
 from inspect import signature
+import numba
 from numba import njit, jit, prange
 from typing import Tuple, List
 import random
@@ -282,7 +283,9 @@ class Deepdrive2DEnv(gym.Env):
     
     def _step(self, actions):
         self.start_step_time = time.time()
-        ret =  _p_step(self.agents, self.dummy_accel_agents, actions)
+        ret =  _p_step(np.array([agent.step for agent in self.agents]), 
+        #self.dummy_accel_agents, 
+        actions)
 
         if self.should_render:
             self.regulate_fps()
@@ -380,17 +383,19 @@ class Deepdrive2DEnv(gym.Env):
             return check_collision_agents(self.all_agents)
 
 
-@jit(cache=CACHE_NUMBA, nogil=True)
-def _p_step(agents:[Agent], 
-    dummy_accel_agents:[Agent], 
+@njit(cache=CACHE_NUMBA, nogil=True)
+def _p_step(agents_step_fns, 
+    #dummy_accel_agents, 
     actions):
-    ret = []
-    for i in prange(len(agents)):
-        agent = agents[i]
-        if (i+1) % 100 == 0:
-            print(i)
+    n_agents:int = len(agents_step_fns)
+    obs = np.zeros(n_agents)
+    rewards = np.zeros(n_agents)
+    dones = np.zeros(n_agents)
+    infos = np.zeros(n_agents)
+
+    for i in prange(n_agents):
         #self.check_for_collisions()
-        obs, reward, done, info = agent.step(actions[i])
+        obs[i], rewards[i], dones[i], infos[i] = 0,0,0,0 #n_agents[i](actions[i])
         #self.curr_reward = reward
         # if done:
         #     self.num_episodes += 1
@@ -398,12 +403,12 @@ def _p_step(agents:[Agent],
         # self.episode_steps += 1
         # self.total_steps += 1
 
-        for dummy_accel_agent in dummy_accel_agents:
-            # Random forward accel
-            dummy_accel_agent.step([0, random.random(), 0])
+        # for dummy_accel_agent in dummy_accel_agents:
+        #     # Random forward accel
+        #     dummy_accel_agent.step([0, random.random(), 0])
 
 
-    return ret
+    return np.vstack((obs, rewards, dones, infos)).T
 
 
 def main():
