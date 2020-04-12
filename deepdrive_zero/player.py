@@ -3,6 +3,7 @@ from math import cos, sin, pi
 import os
 import sys
 from random import random
+from time import time
 from typing import List
 
 import numpy as np
@@ -61,6 +62,9 @@ class Deepdrive2DPlayer(arcade.Window):
         self.one_waypoint = one_waypoint
 
         self.env_config = env_config
+
+        self._n_update = 0
+        self._cum_update_time = 0
 
     def setup(self):
         """ Set up the game here. Call this function to restart the game. """
@@ -361,6 +365,7 @@ class Deepdrive2DPlayer(arcade.Window):
 
     def update(self, _delta_time):
         """ Movement and game logic """
+        start_time = time()
         env = self.env
         for i, agent in enumerate(env.all_agents):
             sprite = self.player_list[i]
@@ -398,6 +403,12 @@ class Deepdrive2DPlayer(arcade.Window):
             # log.trace(f'x:{a.x}')
             # log.trace(f'y:{a.y}')
             # log.trace(f'angle:{self.sprite.angle}')
+        
+        end_time = time()
+        self._cum_update_time += end_time-start_time
+        self._n_update += 1
+        if self._n_update % 100 == 0:
+            print(f'Player.py: After {self._n_update} steps, average time taken to execute update() {round(self._cum_update_time/self._n_update*1000,3)}ms')
 
 
 def start(env=None, fps=60, env_config=None):
