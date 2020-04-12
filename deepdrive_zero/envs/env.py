@@ -255,16 +255,16 @@ class Deepdrive2DEnv(gym.Env):
         random.seed(seed)
 
     @log.catch
-    def step(self, action):
+    def step(self, actions):
         if self.total_steps == 0:
             log.info(self.env_config)
         if IS_DEBUG_MODE:
-            return self._step(action)
+            return self._step(actions)
         else:
             # Fail gracefully when running so that long training runs are
             # not interrupted by transient errors
             try:
-                return self._step(action)
+                return self._step(actions)
             except:
                 log.exception('Caught exception in step, ending episode')
                 obz = self.get_blank_observation()
@@ -277,29 +277,32 @@ class Deepdrive2DEnv(gym.Env):
 
                 return obz, reward, done, info
 
-    def _step(self, action):
+    def _step(self, actions):
         self.start_step_time = time.time()
-        agent = self.agents[self.agent_index]
+        rets = []
+        for i in range(len(actions)):
+            agent = self.agents[i]
 
-        self.check_for_collisions()
-        obs, reward, done, info = agent.step(action)
-        self.curr_reward = reward
-        if done:
-            self.num_episodes += 1
+            #TODO: Check for collisions after all updates?
+            self.check_for_collisions()
+            obs, reward, done, info = agent.step(actions[i])
+            self.curr_reward = reward
+            if done:
+                self.num_episodes += 1
 
-        self.episode_steps += 1
-        self.total_steps += 1
+            self.episode_steps += 1
+            self.total_steps += 1
 
-        ret = self.get_step_output(done, info, obs, reward)
+            rets.append(self.get_step_output(done, info, obs, reward))
 
-        if self.should_render:
-            self.regulate_fps()
+            if self.should_render:
+                self.regulate_fps()
 
-        for dummy_accel_agent in self.dummy_accel_agents:
+            for dummy_accel_agent in self.dummy_accel_agents:
             # Random forward accel
-            dummy_accel_agent.step([0, random.random(), 0])
+                dummy_accel_agent.step([0, random.random(), 0])
 
-        return ret
+        return rets
 
     def get_step_output(self, done, info, obs, reward):
         """ Return the observation that corresponds with the correct agent/action
