@@ -2,7 +2,9 @@ import os
 import sys
 import time
 from copy import deepcopy
+from deepdrive_zero.constants import CACHE_NUMBA
 from inspect import signature
+from numba import njit
 from typing import Tuple, List
 import random
 import gym
@@ -295,8 +297,8 @@ class Deepdrive2DEnv(gym.Env):
 
         return rets
     
-
     @staticmethod
+    @njit(cache=CACHE_NUMBA, nogil=True)
     def _parallel_step(actions, agents):
         " (Eventually) Update all agents in parallel."
         rets = []
