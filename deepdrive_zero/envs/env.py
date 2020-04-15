@@ -9,6 +9,7 @@ import gym
 import numpy as np
 from box import Box
 from gym import spaces
+from multiprocessing import Pool
 
 import pyglet
 
@@ -297,15 +298,23 @@ class Deepdrive2DEnv(gym.Env):
     
 
     @staticmethod
+    def _step_helper(data):
+        i, agent, action, rets = data
+        rets[i] = agent.step(action)
+
+    @staticmethod
     def _parallel_step(actions, agents):
         " (Eventually) Update all agents in parallel."
-        rets = []
-        for i in range(len(actions)):
-            agent = agents[i]
 
-            #TODO: Check for collisions after all updates?
-            obs, reward, done, info = agent.step(actions[i])
-            rets.append([done, info, obs, reward])
+        p = Pool()
+        rets = [None]*len(agents)
+        p.map(Deepdrive2DEnv._step_helper,zip(list(range(len(actions))), agents, actions, rets))
+        # for i in range(len(actions)):
+        #     agent = agents[i]
+
+        #     #TODO: Check for collisions after all updates?
+        #     obs, reward, done, info = agent.step(actions[i])
+        #     rets.append([done, info, obs, reward])
 
         return rets
 
