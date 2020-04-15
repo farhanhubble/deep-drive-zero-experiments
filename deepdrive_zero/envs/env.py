@@ -1,10 +1,11 @@
 import os
 import sys
 import time
+from box import Box
 from copy import deepcopy
 from deepdrive_zero.constants import CACHE_NUMBA
 from inspect import signature
-from numba import njit
+from numba import njit, prange
 from typing import Tuple, List
 import random
 import gym
@@ -298,18 +299,26 @@ class Deepdrive2DEnv(gym.Env):
         return rets
     
     @staticmethod
-    @njit(cache=CACHE_NUMBA, nogil=True)
-    def _parallel_step(actions, agents):
+    @njit(parallel=True, nogil=True)
+    def _parallel_step(actions, agents:[Agent]): 
         " (Eventually) Update all agents in parallel."
-        rets = []
+        #rets = []
+        dones:[numba.bool] = [False]*len(agents)
+        rewards:[numba.float64] = [0.0]*len(agents)
+        obzs:[numba.float64[:]] = [None]*len(agents)
+        infos:[Box] = [None]*len(agents)
+        
         for i in range(len(actions)):
             agent = agents[i]
 
             #TODO: Check for collisions after all updates?
-            obs, reward, done, info = agent.step(actions[i])
-            rets.append([done, info, obs, reward])
+            #obs, reward, done, info = agent.step(actions[i])
+            obzs[i], rewars[i], dones[i], infos[i] = agent.step(actions[i])
+            #print('{',info,'}\n')
 
-        return rets
+            #rets.append([done, info, obs, reward])
+
+        return obzs, rewards, dones, infos
 
 
 
