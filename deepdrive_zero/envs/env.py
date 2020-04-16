@@ -300,7 +300,7 @@ class Deepdrive2DEnv(gym.Env):
     @staticmethod
     def _parallel_step(actions, agents):
         " (Eventually) Update all agents in parallel."
-        rets = Parallel(n_jobs=2)(delayed(agents[i].step)(actions[i]) for i in range(len(agents)))
+        rets = Parallel(n_jobs=2, require='sharedmem')(delayed(agents[i].step)(actions[i]) for i in range(len(agents)))
         return rets
 
 
