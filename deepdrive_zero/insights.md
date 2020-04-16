@@ -22,3 +22,11 @@ pip install -e .
 
 ## Running DDZ
 - Need to run `python deepdrive_zero/player.py --intersection --no-timeout` from above the deepdrive_zero directory as there are scripts in that folder that import `deepdrive_zero`. 
+
+## Parallelization options
+joblib/dask/ipyparallel, 
+
+joblib: pickling fails when log is enabled
+        for num_jobs=2, new objects being spawned 
+        threading is slow 
+        multiprocessing and Pool doesn't pickle 
