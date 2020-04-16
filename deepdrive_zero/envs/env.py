@@ -3,6 +3,7 @@ import sys
 import time
 from copy import deepcopy
 from inspect import signature
+from multiprocessing import Queue, Process
 from typing import Tuple, List
 import random
 import gym
@@ -279,7 +280,12 @@ class Deepdrive2DEnv(gym.Env):
 
     def _step(self, actions):
         self.start_step_time = time.time()
-        rets = Deepdrive2DEnv._parallel_step(actions, self.agents)
+        agent_update_queue = Queue()
+        agent_update_queue.put((self.agents[0], actions[0]))
+        agent_update_queue.put((self.agents[1], actions[1]))
+        agent_update_process = Process(name='Process-1', target=Deepdrive2DEnv._parallel_step, args=(agent_update_queue,))
+        agent_update_process.start()
+        agent_update_process.join()
 
         #TODO: Check for collisions after all updates?
         self.check_for_collisions()
@@ -297,17 +303,11 @@ class Deepdrive2DEnv(gym.Env):
     
 
     @staticmethod
-    def _parallel_step(actions, agents):
+    def _parallel_step(queue):
         " (Eventually) Update all agents in parallel."
-        rets = []
-        for i in range(len(actions)):
-            agent = agents[i]
-
-            #TODO: Check for collisions after all updates?
-            obs, reward, done, info = agent.step(actions[i])
-            rets.append([done, info, obs, reward])
-
-        return rets
+        agent, action = queue.get()
+        obs, reward, done, info = agent.step(action)
+        return
 
 
 
