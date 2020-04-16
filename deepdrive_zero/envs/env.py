@@ -7,6 +7,7 @@ from deepdrive_zero.constants import CACHE_NUMBA
 from inspect import signature
 from numba import njit, prange
 from typing import Tuple, List
+import numba
 import random
 import gym
 import numpy as np
@@ -257,7 +258,7 @@ class Deepdrive2DEnv(gym.Env):
         self.seed_value = seed or 0
         random.seed(seed)
 
-    @log.catch
+    #@log.catch
     def step(self, actions):
         if self.total_steps == 0:
             log.info(self.env_config)
@@ -313,7 +314,7 @@ class Deepdrive2DEnv(gym.Env):
 
             #TODO: Check for collisions after all updates?
             #obs, reward, done, info = agent.step(actions[i])
-            obzs[i], rewars[i], dones[i], infos[i] = agent.step(actions[i])
+            obzs[i], rewards[i], dones[i], infos[i] = agent.step(actions[i])
             #print('{',info,'}\n')
 
             #rets.append([done, info, obs, reward])
