@@ -3,6 +3,7 @@ import sys
 import time
 from copy import deepcopy
 from inspect import signature
+from joblib import Parallel, delayed
 from typing import Tuple, List
 import random
 import gym
@@ -299,14 +300,7 @@ class Deepdrive2DEnv(gym.Env):
     @staticmethod
     def _parallel_step(actions, agents):
         " (Eventually) Update all agents in parallel."
-        rets = []
-        for i in range(len(actions)):
-            agent = agents[i]
-
-            #TODO: Check for collisions after all updates?
-            obs, reward, done, info = agent.step(actions[i])
-            rets.append([done, info, obs, reward])
-
+        rets = Parallel(n_jobs=2)(delayed(agents[i].step)(actions[i]) for i in range(len(agents)))
         return rets
 
 
