@@ -255,7 +255,7 @@ class Deepdrive2DEnv(gym.Env):
         self.seed_value = seed or 0
         random.seed(seed)
 
-    @log.catch
+    #@log.catch
     def step(self, actions):
         if self.total_steps == 0:
             log.info(self.env_config)
