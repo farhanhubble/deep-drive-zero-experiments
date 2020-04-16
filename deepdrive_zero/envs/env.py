@@ -155,6 +155,8 @@ class Deepdrive2DEnv(gym.Env):
         self.agent_index: int = 0  # Current agent we are stepping
         self.curr_reward = 0
 
+        self.parallelizer = Parallel(n_jobs=2, require='sharedmem')
+
 
     def configure_env(self, env_config: dict = None):
         env_config = env_config or {}
@@ -280,7 +282,7 @@ class Deepdrive2DEnv(gym.Env):
 
     def _step(self, actions):
         self.start_step_time = time.time()
-        rets = Deepdrive2DEnv._parallel_step(actions, self.agents)
+        rets = Deepdrive2DEnv._parallel_step(self.parallelizer, actions, self.agents)
 
         #TODO: Check for collisions after all updates?
         self.check_for_collisions()
@@ -298,9 +300,9 @@ class Deepdrive2DEnv(gym.Env):
     
 
     @staticmethod
-    def _parallel_step(actions, agents):
+    def _parallel_step(parallelizer, actions, agents):
         " (Eventually) Update all agents in parallel."
-        rets = Parallel(n_jobs=2, require='sharedmem')(delayed(agents[i].step)(actions[i]) for i in range(len(agents)))
+        rets = parallelizer(delayed(agents[i].step)(actions[i]) for i in range(len(agents)))
         return rets
 
 
